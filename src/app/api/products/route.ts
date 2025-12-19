@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+// Use absolute path to avoid issues with spaces in directory names
 const DATA_PATH = path.join(process.cwd(), "products.json");
 
 export interface Product {
@@ -59,6 +60,17 @@ export async function POST(request: NextRequest) {
   try {
     const { name, brand } = await request.json();
     
+    console.log("Creating product:", { name, brand });
+    console.log("DATA_PATH:", DATA_PATH);
+    console.log("CWD:", process.cwd());
+    console.log("File exists:", fs.existsSync(DATA_PATH));
+    
+    // Ensure the file exists
+    if (!fs.existsSync(DATA_PATH)) {
+      console.log("Creating products.json file...");
+      fs.writeFileSync(DATA_PATH, "[]");
+    }
+    
     const product: Product = {
       id: Date.now().toString(),
       name,
@@ -72,11 +84,24 @@ export async function POST(request: NextRequest) {
     };
 
     const products = loadProducts();
+    console.log("Loaded products:", products.length);
+    
     products.push(product);
     saveProducts(products);
+    
+    console.log("Product saved successfully");
 
     return NextResponse.json({ success: true, product });
-  } catch {
-    return NextResponse.json({ error: "Failed to create" }, { status: 500 });
+  } catch (error) {
+    console.error("Error creating product:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : "";
+    return NextResponse.json({ 
+      error: "Failed to create", 
+      details: errorMessage,
+      stack: errorStack,
+      cwd: process.cwd(),
+      dataPath: DATA_PATH
+    }, { status: 500 });
   }
 }
