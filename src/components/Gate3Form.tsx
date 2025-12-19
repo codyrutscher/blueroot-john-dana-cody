@@ -7,7 +7,11 @@ type Tab = "overview" | "market" | "product" | "production" | "financials" | "ap
 const BRANDS = ["Vital Nutrients", "Bariatric Fusion", "Fairhaven Health", "Unjury"];
 const LAUNCH_TYPES = ["New Product", "Line Extension", "Reformulation", "Repackaging"];
 
-export default function Gate3Form() {
+interface Props {
+  productId?: string;
+}
+
+export default function Gate3Form({ productId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   
   // Overview
@@ -110,10 +114,14 @@ export default function Gate3Form() {
     };
 
     try {
-      const res = await fetch("/api/gate3", {
-        method: "POST",
+      const url = productId ? `/api/products/${productId}` : "/api/gate3";
+      const method = productId ? "PATCH" : "POST";
+      const body = productId ? { gate3: formData, gate3Complete: true } : formData;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
       if (res.ok) setMessage("Gate 3 document saved!");
       else setMessage("Failed to save");

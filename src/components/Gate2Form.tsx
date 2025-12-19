@@ -8,7 +8,11 @@ const BRANDS = ["Vital Nutrients", "Bariatric Fusion", "Fairhaven Health", "Unju
 const LAUNCH_TYPES = ["New Product", "Line Extension", "Reformulation", "Repackaging"];
 const RISK_LEVELS = ["Low", "Normal", "High"];
 
-export default function Gate2Form() {
+interface Props {
+  productId?: string;
+}
+
+export default function Gate2Form({ productId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("product");
   
   // Product Info
@@ -180,10 +184,14 @@ export default function Gate2Form() {
     };
 
     try {
-      const res = await fetch("/api/gate2", {
-        method: "POST",
+      const url = productId ? `/api/products/${productId}` : "/api/gate2";
+      const method = productId ? "PATCH" : "POST";
+      const body = productId ? { gate2: formData, gate2Complete: true } : formData;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
       if (res.ok) setMessage("Gate 2 document saved!");
       else setMessage("Failed to save");

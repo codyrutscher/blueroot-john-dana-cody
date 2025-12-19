@@ -6,6 +6,11 @@ type Tab = "summary" | "materials" | "bom" | "label" | "demand";
 
 const BRANDS = ["Vital Nutrients", "Bariatric Fusion", "Fairhaven Health", "Unjury"];
 const PRODUCT_TYPES = ["Insourcing", "New", "Change"];
+
+interface Props {
+  productId?: string;
+}
+
 const ROUTING_BLENDING = [
   "Routing-Blending PK20 4 hours",
   "Routing-Blending PK20 8 hours",
@@ -25,7 +30,7 @@ const ROUTING_ENCAPSULATE = [
   "Routing-Tableting 27 Station D5 3/4",
 ];
 
-export default function PSFForm() {
+export default function PSFForm({ productId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("summary");
   
   // Product Summary
@@ -115,10 +120,14 @@ export default function PSFForm() {
     };
 
     try {
-      const res = await fetch("/api/psf", {
-        method: "POST",
+      const url = productId ? `/api/products/${productId}` : "/api/psf";
+      const method = productId ? "PATCH" : "POST";
+      const body = productId ? { psf: formData, psfComplete: true } : formData;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
       if (res.ok) setMessage("PSF document saved!");
       else setMessage("Failed to save");

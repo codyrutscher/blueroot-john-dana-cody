@@ -2,10 +2,8 @@
 
 import { useState, useMemo } from "react";
 
-type FormPath = "start" | "continue" | "review" | null;
-type Tab = "info" | "pricing" | "quantities" | "channels" | "testing" | "pnl";
+type Tab = "pricing" | "quantities" | "channels" | "testing" | "pnl";
 
-const BRANDS = ["Vital Nutrients", "Bariatric Fusion", "Fairhaven Health", "Unjury"];
 const FORMATS = ["capsule", "tablet", "powder", "sachet", "softgel", "stickpak", "quickmelt"];
 
 const DEFAULT_PERCENTAGES = {
@@ -40,15 +38,12 @@ interface PricingConfig {
   adjustment: number;
 }
 
-export default function FinancialForm() {
-  const [path, setPath] = useState<FormPath>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("info");
-  
-  // Product Info
-  const [brand, setBrand] = useState("");
-  const [productName, setProductName] = useState("");
-  const [productDescription, setProductDescription] = useState("");
-  const [targetedLaunchDate, setTargetedLaunchDate] = useState("");
+interface Props {
+  productId?: string;
+}
+
+export default function FinancialForm({ productId }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("pricing");
   const [format, setFormat] = useState("");
   
   // Pricing
@@ -156,7 +151,7 @@ export default function FinancialForm() {
     setMessage("");
 
     const formData = {
-      path, brand, productName, productDescription, targetedLaunchDate, format,
+      format,
       msrp: parseFloat(msrp) || 0,
       pricing: {
         dtcAdjusted: calculatePrice("dtcAdjusted"),
@@ -199,51 +194,28 @@ export default function FinancialForm() {
     };
 
     try {
-      const res = await fetch("/api/product", {
-        method: "POST",
+      const url = productId ? `/api/products/${productId}` : "/api/product";
+      const method = productId ? "PATCH" : "POST";
+      const body = productId ? { financial: formData } : formData;
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
-        setMessage("Product saved successfully!");
+        setMessage("Financial data saved!");
       } else {
-        setMessage("Failed to save product");
+        setMessage("Failed to save");
       }
     } catch {
-      setMessage("Error saving product");
+      setMessage("Error saving");
     } finally {
       setSaving(false);
     }
   };
 
-  // Path selection screen
-  if (!path) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6 text-gray-900">New Product Development</h1>
-        <p className="text-gray-700 mb-8">Select a path to continue:</p>
-        <div className="space-y-4">
-          {[
-            { key: "start", title: "Start Development of New Product", desc: "Begin a new product from scratch" },
-            { key: "continue", title: "Continue Development of New Product", desc: "Resume work on an existing product" },
-            { key: "review", title: "Review Finalized New Product", desc: "View and approve a completed product" },
-          ].map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setPath(p.key as FormPath)}
-              className="w-full p-4 text-left border-2 border-gray-300 rounded-lg bg-white hover:border-blue-600 hover:bg-blue-100 transition shadow-sm"
-            >
-              <div className="font-semibold text-lg text-gray-900">{p.title}</div>
-              <div className="text-gray-600 text-sm">{p.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const tabs: { key: Tab; label: string }[] = [
-    { key: "info", label: "Product Info" },
     { key: "pricing", label: "Pricing" },
     { key: "quantities", label: "Quantities" },
     { key: "channels", label: "Channel Weights" },
@@ -251,9 +223,9 @@ export default function FinancialForm() {
     { key: "pnl", label: "P&L" },
   ];
 
-  const inputClasses = "w-full border-2 border-gray-300 rounded-lg p-2 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none";
-  const labelClasses = "block text-sm font-semibold text-gray-800 mb-1";
-  const sectionClasses = "bg-white border-2 border-gray-300 rounded-lg p-6 space-y-4 shadow-sm";
+  const inputClasses = "w-full border-2 border-gray-500 rounded-lg p-2 bg-slate-700 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none";
+  const labelClasses = "block text-sm font-semibold text-gray-300 mb-1";
+  const sectionClasses = "bg-slate-800 border-2 border-gray-600 rounded-lg p-6 space-y-4 shadow-sm";
 
 
   const pricingRows = [
@@ -285,27 +257,19 @@ export default function FinancialForm() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex items-center gap-4 mb-4">
-        <button onClick={() => setPath(null)} className="text-blue-700 font-medium hover:text-blue-900 hover:underline">
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {path === "start" && "Start Development of New Product"}
-          {path === "continue" && "Continue Development of New Product"}
-          {path === "review" && "Review Finalized New Product"}
-        </h1>
-      </div>
+      <h1 className="text-2xl font-bold text-white mb-4">Financial Projections</h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b-2 border-gray-200">
+      <div className="flex gap-1 mb-6 border-b-2 border-gray-600">
         {tabs.map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 font-medium rounded-t-lg transition ${
               activeTab === tab.key
                 ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-slate-700 text-gray-300 hover:bg-slate-600"
             }`}
           >
             {tab.label}
@@ -314,49 +278,22 @@ export default function FinancialForm() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Product Info Tab */}
-        {activeTab === "info" && (
-          <div className={sectionClasses}>
-            <h2 className="text-lg font-bold text-gray-900 border-b-2 border-gray-200 pb-2">Product Information</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClasses}>Brand</label>
-                <select value={brand} onChange={(e) => setBrand(e.target.value)} className={inputClasses} required>
-                  <option value="">Select brand...</option>
-                  {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClasses}>Format</label>
-                <select value={format} onChange={(e) => setFormat(e.target.value)} className={inputClasses} required>
-                  <option value="">Select format...</option>
-                  {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className={labelClasses}>Product Name</label>
-              <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} className={inputClasses} required />
-            </div>
-            <div>
-              <label className={labelClasses}>Product Description</label>
-              <textarea value={productDescription} onChange={(e) => setProductDescription(e.target.value)} className={inputClasses} rows={3} />
-            </div>
-            <div>
-              <label className={labelClasses}>Targeted Launch Date</label>
-              <input type="date" value={targetedLaunchDate} onChange={(e) => setTargetedLaunchDate(e.target.value)} className={inputClasses} />
-            </div>
-          </div>
-        )}
-
+        {/* Format selector at top */}
+        <div className="mb-4">
+          <label className={labelClasses}>Format</label>
+          <select value={format} onChange={(e) => setFormat(e.target.value)} className={inputClasses + " w-48"}>
+            <option value="">Select format...</option>
+            {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </div>
 
         {/* Pricing Tab */}
         {activeTab === "pricing" && (
           <div className={sectionClasses}>
-            <h2 className="text-lg font-bold text-gray-900 border-b-2 border-gray-200 pb-2">Pricing</h2>
+            <h2 className="text-lg font-bold text-white border-b-2 border-gray-600 pb-2">Pricing</h2>
             <div className="mb-4">
               <label className={labelClasses}>MSRP (DTC Price) ($)</label>
-              <input type="number" step="0.01" value={msrp} onChange={(e) => setMsrp(e.target.value)} className="w-48 border-2 border-gray-300 rounded-lg p-2 bg-white text-gray-900 focus:border-blue-500 focus:outline-none" placeholder="0.00" />
+              <input type="number" step="0.01" value={msrp} onChange={(e) => setMsrp(e.target.value)} className="w-48 border-2 border-gray-500 rounded-lg p-2 bg-slate-700 text-white focus:border-blue-500 focus:outline-none" placeholder="0.00" />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
@@ -370,18 +307,18 @@ export default function FinancialForm() {
                 </thead>
                 <tbody>
                   {pricingRows.map((row) => (
-                    <tr key={row.key} className="hover:bg-yellow-100 bg-white">
-                      <td className="border-2 border-gray-300 p-2">
-                        <div className="font-semibold text-gray-900">{row.label}</div>
-                        <div className="text-gray-500 text-xs">{row.formula}</div>
+                    <tr key={row.key} className="hover:bg-slate-600 bg-slate-700">
+                      <td className="border-2 border-gray-600 p-2">
+                        <div className="font-semibold text-white">{row.label}</div>
+                        <div className="text-gray-400 text-xs">{row.formula}</div>
                       </td>
-                      <td className="border-2 border-gray-300 p-1">
-                        <input type="number" value={percentages[row.key].percent} onChange={(e) => updatePercent(row.key, parseFloat(e.target.value) || 0)} className="w-full p-1 border-2 border-gray-300 rounded text-center bg-white text-gray-900 focus:border-blue-500 focus:outline-none" />
+                      <td className="border-2 border-gray-600 p-1">
+                        <input type="number" value={percentages[row.key].percent} onChange={(e) => updatePercent(row.key, parseFloat(e.target.value) || 0)} className="w-full p-1 border-2 border-gray-500 rounded text-center bg-slate-600 text-white focus:border-blue-500 focus:outline-none" />
                       </td>
-                      <td className="border-2 border-gray-300 p-1">
-                        <input type="number" step="0.01" value={percentages[row.key].adjustment} onChange={(e) => updateAdjustment(row.key, parseFloat(e.target.value) || 0)} className="w-full p-1 border-2 border-gray-300 rounded text-center bg-white text-gray-900 focus:border-blue-500 focus:outline-none" />
+                      <td className="border-2 border-gray-600 p-1">
+                        <input type="number" step="0.01" value={percentages[row.key].adjustment} onChange={(e) => updateAdjustment(row.key, parseFloat(e.target.value) || 0)} className="w-full p-1 border-2 border-gray-500 rounded text-center bg-slate-600 text-white focus:border-blue-500 focus:outline-none" />
                       </td>
-                      <td className="border-2 border-gray-300 p-2 font-mono font-bold bg-green-100 text-green-800">
+                      <td className="border-2 border-gray-600 p-2 font-mono font-bold bg-green-900 text-green-300">
                         ${calculatePrice(row.key).toFixed(2)}
                       </td>
                     </tr>
