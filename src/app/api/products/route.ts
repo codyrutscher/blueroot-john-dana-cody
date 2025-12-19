@@ -1,57 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-// Use absolute path to avoid issues with spaces in directory names
-const DATA_PATH = path.join(process.cwd(), "products.json");
-
-export interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  financial?: Record<string, unknown>;
-  gate2?: Record<string, unknown>;
-  gate3?: Record<string, unknown>;
-  psf?: Record<string, unknown>;
-  gate2Complete?: boolean;
-  gate3Complete?: boolean;
-  psfComplete?: boolean;
-}
-
-export function loadProducts(): Product[] {
-  if (fs.existsSync(DATA_PATH)) {
-    return JSON.parse(fs.readFileSync(DATA_PATH, "utf-8"));
-  }
-  return [];
-}
-
-export function saveProducts(products: Product[]) {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(products, null, 2));
-}
-
-export function getProduct(id: string): Product | undefined {
-  const products = loadProducts();
-  return products.find(p => p.id === id);
-}
-
-export function updateProduct(id: string, updates: Partial<Product>): Product | null {
-  const products = loadProducts();
-  const index = products.findIndex(p => p.id === id);
-  if (index === -1) return null;
-  
-  products[index] = { ...products[index], ...updates, updatedAt: new Date().toISOString() };
-  saveProducts(products);
-  return products[index];
-}
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const products = loadProducts();
-    return NextResponse.json(products);
-  } catch {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // Map snake_case to camelCase for frontend
+    const products = data?.map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      status: p.status,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+      financial: p.financial,
+      gate2: p.gate2,
+      gate3: p.gate3,
+      psf: p.psf,
+      gate2Complete: p.gate2_complete,
+      gate3Complete: p.gate3_complete,
+      psfComplete: p.psf_complete,
+    }));
+
+    return NextResponse.json(products || []);
+  } catch (error) {
+    console.error("Error loading products:", error);
     return NextResponse.json({ error: "Failed to load" }, { status: 500 });
   }
 }
@@ -59,49 +37,40 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { name, brand } = await request.json();
-    
-    console.log("Creating product:", { name, brand });
-    console.log("DATA_PATH:", DATA_PATH);
-    console.log("CWD:", process.cwd());
-    console.log("File exists:", fs.existsSync(DATA_PATH));
-    
-    // Ensure the file exists
-    if (!fs.existsSync(DATA_PATH)) {
-      console.log("Creating products.json file...");
-      fs.writeFileSync(DATA_PATH, "[]");
-    }
-    
-    const product: Product = {
-      id: Date.now().toString(),
-      name,
-      brand,
-      status: "draft",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      gate2Complete: false,
-      gate3Complete: false,
-      psfComplete: false,
-    };
 
-    const products = loadProducts();
-    console.log("Loaded products:", products.length);
-    
-    products.push(product);
-    saveProducts(products);
-    
-    console.log("Product saved successfully");
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name,
+        brand,
+        status: "draft",
+        gate2_complete: false,
+        gate3_complete: false,
+        psf_complete: false,
+      })
+      .select()
+      .single();
 
-    return NextResponse.json({ success: true, product });
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      product: {
+        id: data.id,
+        name: data.name,
+        brand: data.brand,
+        status: data.status,
+        createdAt: data.created_at,
+        gate2Complete: data.gate2_complete,
+        gate3Complete: data.gate3_complete,
+        psfComplete: data.psf_complete,
+      },
+    });
   } catch (error) {
     console.error("Error creating product:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : "";
-    return NextResponse.json({ 
-      error: "Failed to create", 
-      details: errorMessage,
-      stack: errorStack,
-      cwd: process.cwd(),
-      dataPath: DATA_PATH
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create", details: String(error) },
+      { status: 500 }
+    );
   }
 }
