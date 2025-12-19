@@ -38,7 +38,10 @@ export default function ProductsPage() {
   };
 
   const createProduct = async () => {
-    if (!newProductName || !newProductBrand) return;
+    if (!newProductName || !newProductBrand) {
+      alert("Please fill in both product name and brand");
+      return;
+    }
     
     try {
       const res = await fetch("/api/products", {
@@ -51,9 +54,14 @@ export default function ProductsPage() {
         setNewProductBrand("");
         setShowNewForm(false);
         fetchProducts();
+      } else {
+        const error = await res.text();
+        console.error("Create failed:", error);
+        alert("Failed to create product");
       }
-    } catch {
-      console.error("Failed to create product");
+    } catch (err) {
+      console.error("Failed to create product:", err);
+      alert("Failed to create product");
     }
   };
 
