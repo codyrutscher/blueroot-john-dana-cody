@@ -40,7 +40,7 @@ interface PricingConfig {
   adjustment: number;
 }
 
-export default function ForecastForm() {
+export default function FinancialForm() {
   const [path, setPath] = useState<FormPath>(null);
   const [activeTab, setActiveTab] = useState<Tab>("info");
   
